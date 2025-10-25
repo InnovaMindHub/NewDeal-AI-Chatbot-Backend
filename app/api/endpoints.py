@@ -26,6 +26,7 @@ from app.utils.helpers import image_to_base64
 from app.core.cache import REDIS_AVAILABLE, cache
 from app.utils.logging import logger
 from app.core.llm_provider import OptimizedLLMProvider, PROVIDER_CONFIGS
+from app.core.prompt_templates import build_rag_prompt
 from app.core.metrics import metrics_collector
 from app.core.health_check import health_checker
 
@@ -115,7 +116,8 @@ async def metrics():
 async def prometheus_metrics():
     """Endpoint pour Prometheus au format texte"""
     try:
-        prometheus_data = metrics_collector.export_prometheus_format()
+        from prometheus_client import generate_latest
+        prometheus_data = generate_latest()
         return Response(content=prometheus_data, media_type="text/plain")
     except Exception as e:
         logger.error(f"Erreur lors de l'export Prometheus: {e}")
@@ -567,24 +569,8 @@ async def ask_question_stream_ultra(question_request: QuestionRequest, request: 
             context_parts = [result.content for result in ranked_results]
             context = "\n\n".join(context_parts)
 
-            # Prompt optimisé
-            optimized_prompt = f"""Vous êtes un assistant expert de la Caisse de Sécurité Sociale du Sénégal.
-
-CONTEXTE:
-{context}
-
-QUESTION: {question_request.question}
-
-INSTRUCTIONS:
-1. Répondez de manière naturelle et professionnelle
-2. Utilisez uniquement les informations fournies dans le contexte
-3. Si les informations sont insuffisantes, proposez de reformuler la question
-4. Soyez précis et concis
-5. Synthétisez les informations de manière cohérente
-6. NE CITEZ JAMAIS les sources dans votre réponse (pas de "Source 1", "Source 2", etc.)
-7. Intégrez naturellement les informations sans mentionner leur provenance
-
-RÉPONSE:"""
+            # Prompt optimisé (aligné New Deal si activé)
+            optimized_prompt = build_rag_prompt(context, question_request.question)
 
             # Streaming de la génération
             provider = OptimizedLLMProvider(question_request.provider)

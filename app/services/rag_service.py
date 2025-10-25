@@ -24,6 +24,7 @@ from app.models.enums import Provider, ContentType, ModalityType
 from app.utils.logging import logger
 from app.core.cache import cache
 from app.core.config import settings
+from app.core.prompt_templates import build_rag_prompt
 
 
 # RAG Ultra Performant - Classe principale
@@ -348,7 +349,7 @@ class UltraPerformantRAG:
                     "search_results": 0,
                     "ranked_results": 0,
                     "enhanced_queries": [question],
-                    "sources": [{"type": "predefined", "content": "Base de connaissances CSS", "confidence": predefined_response["confidence"]}],
+                    "sources": [{"type": "predefined", "content": "Base de connaissances New Deal Technologie", "confidence": predefined_response["confidence"]}],
                     "performance_metrics": {
                         "search_time_ms": 0,
                         "generation_time_ms": 0,
@@ -385,7 +386,7 @@ class UltraPerformantRAG:
             if not all_results:
                 no_context_response = {
                     "id": query_id,
-                    "answer": "Je ne trouve pas d'informations spécifiques à votre question dans ma base de connaissances CSS. Pourriez-vous reformuler votre question ou être plus précis ?",
+                    "answer": "Je ne trouve pas d'informations spécifiques à votre question dans ma base de connaissances du New Deal Technologie. Pourriez-vous reformuler votre question ou être plus précis ?",
                     "context_found": False,
                     "provider_used": provider.value,
                     "model_used": PROVIDER_CONFIGS[provider]["model"],
@@ -421,24 +422,8 @@ class UltraPerformantRAG:
 
             context = "\n\n".join(context_parts)
 
-            # 6. Prompt optimisé avec instructions spécifiques
-            optimized_prompt = f"""Vous êtes un assistant expert de la Caisse de Sécurité Sociale du Sénégal.
-
-CONTEXTE:
-{context}
-
-QUESTION: {question}
-
-INSTRUCTIONS:
-1. Répondez de manière naturelle et professionnelle
-2. Utilisez uniquement les informations fournies dans le contexte
-3. Si les informations sont insuffisantes, proposez de reformuler la question
-4. Soyez précis et concis
-5. Synthétisez les informations de manière cohérente
-6. NE CITEZ JAMAIS les sources dans votre réponse (pas de "Source 1", "Source 2", etc.)
-7. Intégrez naturellement les informations sans mentionner leur provenance
-
-RÉPONSE:"""
+            # 6. Prompt optimisé avec instructions spécifiques (aligné New Deal si activé)
+            optimized_prompt = build_rag_prompt(context, question)
 
             # 7. Génération de la réponse
             response_text = await llm_provider.generate_response(

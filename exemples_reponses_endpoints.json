@@ -94,7 +94,7 @@
       },
       "GET /metrics/prometheus": {
         "description": "Métriques au format Prometheus",
-        "example_response": "# HELP api_requests_total Total API requests\n# TYPE api_requests_total counter\napi_requests_total{method=\"POST\",endpoint=\"/ask-question-ultra\"} 890\n# HELP response_time_seconds Response time in seconds\n# TYPE response_time_seconds histogram\nresponse_time_seconds_bucket{le=\"0.1\"} 450\nresponse_time_seconds_bucket{le=\"0.5\"} 780\nresponse_time_seconds_bucket{le=\"+Inf\"} 890"
+        "example_response": "# HELP api_requests_total Total API requests\n# TYPE api_requests_total counter\napi_requests_total{method=\"POST\",endpoint=\"/ask-question-ultra\"} 890\n# HELP api_response_time_seconds API response time in seconds\n# TYPE api_response_time_seconds histogram\napi_response_time_seconds_bucket{method=\"POST\",endpoint=\"/ask-question-ultra\",status_code=\"200\",le=\"0.1\"} 450\napi_response_time_seconds_bucket{method=\"POST\",endpoint=\"/ask-question-ultra\",status_code=\"200\",le=\"0.5\"} 780\napi_response_time_seconds_bucket{method=\"POST\",endpoint=\"/ask-question-ultra\",status_code=\"200\",le=\"+Inf\"} 890"
       },
       "GET /performance-metrics": {
         "description": "Métriques de performance système",

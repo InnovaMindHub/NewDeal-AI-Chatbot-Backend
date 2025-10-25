@@ -4,6 +4,14 @@ import time
 import logging
 from typing import Callable
 from app.core.metrics import metrics_collector
+from app.utils.logging import (
+    api_requests_total,
+    api_responses_total,
+    api_errors_total,
+    api_response_time_seconds,
+    rag_processing_time_seconds,
+    cache_operations_total,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +22,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app, exclude_paths: list = None):
         super().__init__(app)
-        self.exclude_paths = exclude_paths or ["/docs", "/redoc", "/openapi.json", "/favicon.ico"]
+        self.exclude_paths = exclude_paths or ["/docs", "/redoc", "/openapi.json", "/favicon.ico", "/metrics", "/metrics/prometheus"]
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Ignorer certains endpoints pour éviter la pollution des métriques
@@ -26,7 +34,10 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         method = request.method
         path = request.url.path
         
-        # Incrémenter le compteur de requêtes
+        # Incrémenter le compteur de requêtes (Prometheus)
+        api_requests_total.labels(method=method, endpoint=path).inc()
+        
+        # Incrémenter le compteur de requêtes (collecteur interne)
         metrics_collector.increment_counter("api_requests_total", 1.0, {
             "method": method,
             "endpoint": path
@@ -40,19 +51,22 @@ class MetricsMiddleware(BaseHTTPMiddleware):
             # Calculer le temps de réponse
             response_time = time.time() - start_time
             
-            # Enregistrer les métriques de succès
+            # Enregistrer les métriques de succès (collecteur interne)
             metrics_collector.record_histogram("api_response_time_seconds", response_time, {
                 "method": method,
                 "endpoint": path,
                 "status_code": str(status_code)
             })
             
-            # Incrémenter le compteur de réponses par statut
             metrics_collector.increment_counter("api_responses_total", 1.0, {
                 "method": method,
                 "endpoint": path,
                 "status_code": str(status_code)
             })
+            
+            # Enregistrer les métriques Prometheus
+            api_response_time_seconds.labels(method=method, endpoint=path, status_code=str(status_code)).observe(response_time)
+            api_responses_total.labels(method=method, endpoint=path, status_code=str(status_code)).inc()
             
             # Enregistrer la requête API dans les métriques spécialisées
             success = status_code < 400
@@ -65,6 +79,7 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                     "endpoint": path,
                     "status_code": str(status_code)
                 })
+                api_errors_total.labels(method=method, endpoint=path, status_code=str(status_code)).inc()
             
             # Log pour les requêtes lentes
             if response_time > 5.0:
@@ -94,6 +109,10 @@ class MetricsMiddleware(BaseHTTPMiddleware):
                 "status_code": "500"
             })
             
+            # Prometheus
+            api_errors_total.labels(method=method, endpoint=path, status_code="500").inc()
+            api_response_time_seconds.labels(method=method, endpoint=path, status_code="500").observe(response_time)
+            
             # Enregistrer la requête API échouée dans les métriques spécialisées
             metrics_collector.record_api_request(False, response_time)
             
@@ -109,7 +128,7 @@ class RAGMetricsMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app):
         super().__init__(app)
-        self.rag_endpoints = ["/ask-question", "/ask-question-stream", "/ask-question-stream-ultra"]
+        self.rag_endpoints = ["/ask-question", "/ask-question-ultra", "/ask-question-stream", "/ask-question-stream-ultra", "/ask-multimodal-question"]
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Vérifier si c'est un endpoint RAG
@@ -126,7 +145,7 @@ class RAGMetricsMiddleware(BaseHTTPMiddleware):
             # Calculer le temps de traitement RAG
             processing_time = time.time() - start_time
             
-            # Métriques spécifiques RAG
+            # Métriques spécifiques RAG (collecteur interne)
             metrics_collector.record_histogram("rag_processing_time_seconds", processing_time, {
                 "endpoint": request.url.path,
                 "status": "success"
@@ -136,6 +155,9 @@ class RAGMetricsMiddleware(BaseHTTPMiddleware):
                 "endpoint": request.url.path,
                 "status": "success"
             })
+            
+            # Prometheus
+            rag_processing_time_seconds.labels(endpoint=request.url.path, status="success").observe(processing_time)
             
             # Enregistrer la requête RAG dans les métriques spécialisées
             metrics_collector.record_rag_query("rag", total_time=processing_time)
@@ -151,7 +173,7 @@ class RAGMetricsMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             processing_time = time.time() - start_time
             
-            # Métriques d'erreur RAG
+            # Métriques d'erreur RAG (collecteur interne)
             metrics_collector.record_histogram("rag_processing_time_seconds", processing_time, {
                 "endpoint": request.url.path,
                 "status": "error"
@@ -166,6 +188,9 @@ class RAGMetricsMiddleware(BaseHTTPMiddleware):
                 "endpoint": request.url.path,
                 "error_type": type(e).__name__
             })
+            
+            # Prometheus
+            rag_processing_time_seconds.labels(endpoint=request.url.path, status="error").observe(processing_time)
             
             # Enregistrer la requête RAG échouée dans les métriques spécialisées
             metrics_collector.record_rag_query("rag", total_time=processing_time)
@@ -188,10 +213,14 @@ class CacheMetricsMiddleware(BaseHTTPMiddleware):
         cache_status = response.headers.get("X-Cache-Status", "unknown")
         
         if cache_status in ["hit", "miss"]:
+            # Collecteur interne
             metrics_collector.increment_counter("cache_operations_total", 1.0, {
                 "status": cache_status,
                 "endpoint": request.url.path
             })
+            
+            # Prometheus
+            cache_operations_total.labels(status=cache_status, endpoint=request.url.path).inc()
             
             if cache_status == "hit":
                 metrics_collector.increment_counter("cache_hits_total", 1.0, {

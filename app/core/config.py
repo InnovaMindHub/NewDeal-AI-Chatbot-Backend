@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     # Optimisation LLM
     ENABLE_PREDEFINED_QA: bool = os.getenv("ENABLE_PREDEFINED_QA", "true").lower() == "true"
     ENABLE_QUERY_ENHANCEMENT: bool = os.getenv("ENABLE_QUERY_ENHANCEMENT", "true").lower() == "true"
+    # Alignement du prompt avec le New Deal (activé par défaut)
+    ENABLE_NEW_DEAL_PROMPT: bool = os.getenv("ENABLE_NEW_DEAL_PROMPT", "true").lower() == "true"
     
     # Optimisation Cache
     CACHE_DEFAULT_TTL: int = int(os.getenv("CACHE_DEFAULT_TTL", 7200))  # 2 heures au lieu de 1h

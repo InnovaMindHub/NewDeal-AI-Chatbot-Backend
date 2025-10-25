@@ -933,6 +933,10 @@ Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
 <!-- uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --->
 
+<!-- git remote -v -->
+
+<!-- & .\.venv\Scripts\Activate.ps1; Write-Host "python:" (Get-Command python).Path; Write-Host "VIRTUAL_ENV:" $env:VIRTUAL_ENV; python -m pip --version  -->
+
 ---
 
 **Développé avec ❤️ par InnovaMind**

@@ -1,0 +1,3 @@
+response_id,timestamp,question,response,sources,confidence_score,processing_time_ms,tokens_used,model_used,cache_hit,error_message
+c33756a8-1929-462f-aafd-a1573e0584c3,2025-10-25T12:54:58.659041,string,Je ne trouve pas d'informations spécifiques à votre question dans ma base de connaissances CSS. Pourriez-vous reformuler votre question ou être plus précis ?,,,203.23491096496582,,openai,,
+2d58c174-5394-4ca0-a109-5faec9e3f6fc,2025-10-25T13:06:25.745637,Bonjour,Hello ! Bienvenue dans l'univers du New Deal Technologique. Quelle est votre question ?,"[""Base de connaissances CSS...""]",0.95,7.28917121887207,,predefined_qa,,
